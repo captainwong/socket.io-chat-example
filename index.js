@@ -1,26 +1,69 @@
 const express = require('express');
 const app = express();
-const http = require('http');
-const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server);
+const path = require('path');
+const server = require('http').createServer(app);
+const io = require("socket.io")(server);
+const port = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+
+server.listen(port, () => {
+    console.log('listening on *:%d', port);
 });
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+let numUsers = 0;
 
 io.on('connection', (socket) => {
-    console.log('a user connected');
-    socket.broadcast.emit('hi');
-    socket.on('disconnect', () => {
-        console.log('user disconnected');
-    });
-    socket.on('chat message', (msg) => {
-        console.log('message: ' + msg);
-        io.emit('chat message', msg);
-    });
-});
+    console.log('on connection');
+    let addedUser = false;
 
-server.listen(3000, () => {
-    console.log('listening on *:3000');
-});
+    socket.on('new message', (data) => {
+        console.log('on new message');
+        socket.broadcast.emit('new message', {
+            username: socket.username,
+            message: data
+        });
+    });
+
+    socket.on('add user', (username) => {
+        console.log('on add user');
+        if(addedUser) return;
+
+        socket.username = username;
+        ++numUsers;
+        addedUser = true;
+
+        socket.emit('login', {
+            numUsers: numUsers
+        });
+
+        socket.broadcast.emit('user joined', {
+            username: socket.username,
+            numUsers: numUsers
+        });
+    });
+
+    socket.on('typing', () => {
+        socket.broadcast.emit('typing', {
+            username: socket.username
+        });
+    });
+
+    socket.on('stop typing', () => {
+        socket.broadcast.emit('stop typing', {
+            username: socket.username
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('on disconnect');
+        if(addedUser){
+            --numUsers;
+            socket.broadcast.emit('user left', {
+                username: socket.username,
+                numUsers: numUsers
+            });
+        }
+    })
+})
