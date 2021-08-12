@@ -19,7 +19,7 @@ io.on('connection', (socket) => {
     let addedUser = false;
 
     socket.on('new message', (data) => {
-        console.log('on new message');
+        console.log('on new message:');
         socket.broadcast.emit('new message', {
             username: socket.username,
             message: data
@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('add user', (username) => {
-        console.log('on add user');
+        console.log('on add user:', username);
         if(addedUser) return;
 
         socket.username = username;
@@ -45,19 +45,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('typing', () => {
+        console.log('on typing:', socket.username);
         socket.broadcast.emit('typing', {
             username: socket.username
         });
     });
 
     socket.on('stop typing', () => {
+        console.log('on stop typing:', socket.username);
         socket.broadcast.emit('stop typing', {
             username: socket.username
         });
     });
 
     socket.on('disconnect', () => {
-        console.log('on disconnect');
+        console.log('on disconnect:', socket.username);
         if(addedUser){
             --numUsers;
             socket.broadcast.emit('user left', {
